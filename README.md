@@ -6,6 +6,8 @@
 
 space-invaders.rkt was my final project for this first course in the micro-masters program. The final project encapsulated everything covered in the course, including: data definitions, templating functions, as well as the 'how to design functions' recipe.
 
+![Space Invaders!]()
+
 The rest of this README is dedicated to the notes I took during the 6-week period I followed the course.
 
 ## Introduction
