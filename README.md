@@ -6,7 +6,7 @@
 
 space-invaders.rkt was my final project for this first course in the micro-masters program. The final project encapsulated everything covered in the course, including: data definitions, templating functions, as well as the 'how to design functions' recipe.
 
-![Space Invaders!]()
+![Space Invaders!](https://github.com/pszujewski/systematic-program-design/blob/master/game.png)
 
 The rest of this README is dedicated to the notes I took during the 6-week period I followed the course.
 
@@ -275,3 +275,137 @@ Interval data definitions are used for information that is numbers within a cert
 (define C2 5) ; middle
 (define C3 0) ; end
 ```
+Integer[0, 10] is all the integers from 0 to 10 inclusive; Number[0, 10) is all the numbers from 0 inclusive to 10 exclusive. (The notation is that [ and ] mean that the end of the interval includes the end point; ( and ) mean that the end of the interval does not include the end point.)
+
+Number[-10, 0) means -10 inclusive and 0 exclusive
+Number(-10, 0] means -10 exclusive and 0 inclusive
+
+**Itemization**
+
+An itemization is comprised of 2 or more subclasses, at least one of which is not a distinct item. This is more complex form of data than those above. It is possible to have a "mixed-data itemization."
+
+**Compound**
+
+Compound data consists of two or more items that naturally belong together.
+
+### Module 4a: Arbitrary Self-Reference
+
+So far all the data we've worked with has been data of fixed sized.
+Arbitrary-sized information is information that we don't know the size of in advance. A program that can display any number of cows is operating with arbitrary-sized information.
+
+#### Self-reference
+
+Self-reference in Type Comments for lists is possible, consider:
+
+```
+;; ListOfString is one of :
+;; - empty
+;; - (cons String ListOfString)
+```
+
+Imagine you are given the following examples. Do they match the type comment?
+
+```
+(define LOS1 empty)
+(define LOS2 (cons "McGill" empty))
+```
+
+Empty does for sure because it is 'one of' the possible values of ListOfString. Additionally (cons "McGill" empty) does as well, because "cons" and "McGill" match the second 'one of', and then the ListOfString there is a self-reference (to the type comment that contains it). Again, empty is included in this type comment, so the whole LOS2 example is valid.
+
+Whenever we have a dataset we are working with that is arbitrarily sized, we use self-reference in the type comment.
+
+Well-formed self-referential data definition
+
+A well-formed self-referential data definition has a self-reference case, but that's not it. It also has a base case, which is the non self-referential case that 'stops' any recursive process and ensures we don't get an infinite loop. That's what let's it stop.
+
+There should be at least one self-referential case and one base case, although there can also be more than one.
+
+Check-expects are always examples first and tests later. This goes in general for unit tests, is my personal conclusion. When working with a self-referential problem, you should test the base case first.
+
+#### Examples of a self-referential data definition
+
+```
+;; ListOfString is one of: 
+;; - empty 
+;; - (cons String ListOfString) 
+;; interp. a list of strings
+
+
+(define LOS-1 empty) 
+(define LOS-2 (cons "a" empty)) 
+(define LOS-3 (cons "b" (cons "c" empty)))
+
+#; 
+(define (fn-for-los los) 
+   (cond [(empty? los) (...)]                   ; BASE CASE 
+         [else (... (first los)                 ; String 
+                    (fn-for-los (rest los)))])) ; NATURAL RECURSION
+;; Template rules used: 
+;; - one of: 2 cases 
+;; - atomic distinct: empty 
+;; - compound: (cons String ListOfString) 
+;; - self-reference: (rest los) is ListOfString
+```
+
+Notice that this type comment includes the base case first and that there is natural recursion and symmetry between the type comment and the template.
+
+#### The reference rule (function templating)
+
+When you have a type comment (and therefore a data definition) that references another data definition, you must apply the reference rule in the construction of that type's template
+
+```
+;; ListOfSchool is one of:
+;; - empty
+;; - (cons School ListOfSchool)
+;; interp. a list of schools
+(define LOS1 empty)
+(define LOS2 (cons S1 (cons S2 (cons S3 empty))))
+
+(define (fn-for-los los)
+  (cond [(empty? los) (...)]
+  [else
+  (... (fn-for-school (first los)) .       ;; reference rule applied
+  (fn-for-los (rest los)))]))
+
+;; Template rules used:
+;; - one of: 2 cases                                          ;; gives us the 'cond'
+;; - atomic distinct: empty                              ;; base case gives us (....)
+;; - compound: (cons School ListOfSchool)   ;; (...(first los) (rest los))
+;; - reference: (first los) is School                  ;; reference rule applied
+;; - self-reference: (rest los) is ListOfSchool   ;; gives us the natural recursion
+```
+
+#### How does the 'cons' list implementation work?
+
+It is a struct that contains a 'next' pointer as one of its members, so that it is similar to a linked list implementation.
+
+### Module 5b: Helper functions and breaking down problems
+
+Module goals:
+Be able to design functions that use helper functions for each of the following reasons:
+* at references to other non-primitive data definitions (this will be in the template)
+* to form a function composition
+* to handle a knowledge domain shift
+* to operate on arbitrary sized data
+
+A function should be split into a function composition when it performs two or more distinct operations on the consumed data.
+Big design problems need to be broken into smaller pieces in order to be tractable. The recipes help with this.
+You don't need to test the base case in function composition. Your tests should instead focus on testing the function composition itself. So if you have a function that arranges images by first sorting them and then rendering them, you'll want to tests both of these operations and how they are composed into one.
+
+* A function that must sort and layout a list of images. First it must sort the complete list and then lay it out. It cannot sort and layout each image one at a time.
+* A function that must advance a list of raindrops and then remove the ones that have left the screen. First it must advance all the drops and then remove the ones that have advanced too far. (With difficulty this could be done in a single pass through the list of drops, but it is much more cumbersome to do that way.)
+
+Helper function rules
+
+* Operating on a list rule:
+When an expression must operate on a list -- and go arbitrarily far into that list -- then it must call a helper function to do that.
+
+* function composition rule:
+When a single function includes two or more distinct operations, you need to break them up into separate functions called by this function -> the 'composed' function
+
+* knowledge domain shift:
+* for example shifting from knowledge about sorting images to knowledge about the size of two images. Basically when you notice that one function is trending towards needing to do 2 things.
+
+### Final Module: Binary Search trees (BST)
+
+The Invariant rules for BSTs are that 1) All nodes to the left of the given node have a value (some sort of marker) that is less than that of the given node, and 2) All nodes to the right of the give node have a value that is greater than that of the given node.
